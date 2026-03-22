@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Cv {
+  id           String   @id @default(cuid())
+  name         String
+  email        String
+  phone        String
+  jobTitle     String
+  experience   String
+  location     String
+  skills       String
+  status       String
+  submittedAt  DateTime
+  cvUrl        String
+  summary      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("cvs")
+}
+
+model Candidate {
+  id              String   @id @default(cuid())
+  name            String
+  email           String
+  phone           String
+  jobTitle        String
+  experience      String
+  location        String
+  skills          String
+  status          String
+  submittedAt     DateTime
+  cvUrl           String
+  summary         String
+  isFavorite      Boolean  @default(false)
+  rating          Int      @default(0)
+  source          String
+  expectedSalary  String?
+  availability    String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  notes           CandidateNote[]
+  history         CandidateHistory[]
+
+  @@map("candidates")
+}
+
+model CandidateNote {
+  id          String    @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  author      String
+  text        String
+  recordedAt  DateTime
+
+  @@map("candidate_notes")
+}
+
+model CandidateHistory {
+  id          String    @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  action      String
+  author      String
+  recordedAt  DateTime
+  details     String?
+
+  @@map("candidate_history")
+}
+
+model PipelineStage {
+  id        String @id @default(cuid())
+  sortOrder Int
+  name      String
+  color     String
+
+  @@map("pipeline_stages")
+}
+
+model TeamMember {
+  id     String  @id @default(cuid())
+  name   String
+  email  String  @unique
+  role   String
+  avatar String?
+
+  @@map("team_members")
+}
+
+model EmailTemplate {
+  id      String @id @default(cuid())
+  name    String
+  subject String
+  type    String
+
+  @@map("email_templates")
+}
+
+model CompanySettings {
+  id             String @id @default("default")
+  companyName    String
+  companyEmail   String
+  companyWebsite String
+
+  @@map("company_settings")
+}
+
+model NotificationSettings {
+  id           String  @id @default("default")
+  newCandidate Boolean @default(true)
+  statusChange Boolean @default(true)
+  interview    Boolean @default(true)
+  dailyDigest  Boolean @default(false)
+  weeklyReport Boolean @default(true)
+
+  @@map("notification_settings")
+}
