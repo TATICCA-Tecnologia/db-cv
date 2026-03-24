@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: unless-stopped
+
+  sync-scheduler:
+    image: curlimages/curl:8.13.0
+    env_file:
+      - .env
+    environment:
+      SYNC_CRON_URL: ${SYNC_CRON_URL:-http://app:3000/api/cron/sync-google-sheet}
+      SYNC_CRON_INTERVAL_SECONDS: ${SYNC_CRON_INTERVAL_SECONDS:-43200}
+    depends_on:
+      app:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        while true; do
+          ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo "[$$ts] Triggering CV sync..."
+          curl -fsS -X POST "$$SYNC_CRON_URL" -H "Authorization: Bearer $$CRON_SECRET"
+          echo "[$$ts] Done. Sleeping $$SYNC_CRON_INTERVAL_SECONDS seconds."
+          sleep "$$SYNC_CRON_INTERVAL_SECONDS"
+        done
+    restart: unless-stopped
