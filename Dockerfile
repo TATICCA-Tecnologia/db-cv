@@ -20,7 +20,7 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN pnpm db:generate
+# pnpm build = prisma generate + next build (sem migrate dev / deploy)
 RUN pnpm build
 
 FROM node:22-slim AS runner
