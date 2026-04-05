@@ -1,7 +1,14 @@
+import { extractCvFromPdfWithGemini } from "@/server/gemini/extract-cv-from-pdf"
+import type { CvExtractionResult } from "@/server/gemini/cv-extraction-schema"
 import { isMinioConfigured, putDocumentObject } from "@/server/storage/minio"
 import { resolveGoogleSheetCsvUrlFromEnv } from "./csv-url"
 import { fetchSheetRowsFromCsvUrl } from "./fetch-csv"
 import { fetchPdfBufferFromUrl } from "./pdf-fetch"
+import {
+  mapGeminiExtractionToCvFields,
+  type CvGeminiMergeFields,
+} from "./map-gemini-extraction-to-cv"
+import { upsertCvExtractionFromGemini } from "./persist-cv-extraction"
 import { upsertCvFromSheetRow } from "./persist-cv"
 import { parseImportRow } from "./row-extract"
 import { minioObjectKeyForPdfUrl } from "./storage-key"
@@ -10,16 +17,17 @@ import type { GoogleSheetCvSyncResult } from "./types"
 async function downloadPdfAndMaybeUpload(pdfUrl: string): Promise<{
   storageKey: string | null
   ok: boolean
+  buffer?: Buffer
   errorMessage?: string
 }> {
   try {
     const buffer = await fetchPdfBufferFromUrl(pdfUrl)
     if (!isMinioConfigured()) {
-      return { storageKey: null, ok: true }
+      return { storageKey: null, ok: true, buffer }
     }
     const storageKey = minioObjectKeyForPdfUrl(pdfUrl)
     await putDocumentObject(storageKey, buffer, "application/pdf")
-    return { storageKey, ok: true }
+    return { storageKey, ok: true, buffer }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return { storageKey: null, ok: false, errorMessage: message }
@@ -76,9 +84,43 @@ export async function runGoogleSheetCvSync(): Promise<GoogleSheetCvSyncResult> {
       )
     }
 
-    const action = await upsertCvFromSheetRow(row, pdf.storageKey)
+    let geminiFields: CvGeminiMergeFields | null = null
+    let geminiExtraction: CvExtractionResult | null = null
+    if (pdf.ok && pdf.buffer && process.env.GEMINI_API_KEY?.trim()) {
+      try {
+        const extraction = await extractCvFromPdfWithGemini(pdf.buffer)
+        geminiExtraction = extraction
+        console.log(
+          `[sync] Gemini ${row.lineLabel} (${row.nome}) — JSON do modelo:\n`,
+          JSON.stringify(extraction, null, 2),
+        )
+        geminiFields = mapGeminiExtractionToCvFields(extraction)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        result.warnings.push(
+          `${row.lineLabel} (${row.nome}): extração Gemini falhou — registo usa só dados da planilha. ${msg}`,
+        )
+      }
+    }
+
+    const { action, cvId } = await upsertCvFromSheetRow(
+      row,
+      pdf.storageKey,
+      geminiFields,
+    )
     if (action === "created") result.created++
     else result.updated++
+
+    if (geminiExtraction) {
+      try {
+        await upsertCvExtractionFromGemini(cvId, geminiExtraction)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        result.warnings.push(
+          `${row.lineLabel} (${row.nome}): falha ao gravar extração estruturada (cv_extractions). ${msg}`,
+        )
+      }
+    }
   }
 
   return result

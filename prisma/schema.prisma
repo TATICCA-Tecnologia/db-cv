@@ -9,7 +9,7 @@ datasource db {
 }
 
 model Cv {
-  id           String   @id @default(cuid())
+  id           String        @id @default(cuid())
   name         String
   email        String
   phone        String
@@ -22,10 +22,44 @@ model Cv {
   cvUrl        String
   storageKey   String?
   summary      String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  extraction   CvExtraction?
 
   @@map("cvs")
+}
+
+model CvExtraction {
+  id     String @id @default(cuid())
+  cvId   String @unique
+  cv     Cv     @relation(fields: [cvId], references: [id], onDelete: Cascade)
+
+  nome         String?
+  email        String?
+  telefone     String?
+  localizacao  String?
+  linkedin     String?
+  github       String?
+  portfolio    String?
+
+  resumoProfissional String?
+
+  experiencias   Json?
+  educacao       Json?
+  skills         Json?
+  idiomas        Json?
+  certificacoes  Json?
+  projetos       Json?
+
+  areaProfissional       String?
+  senioridade            String?
+  anosExperiencia        Int?
+  principaisCompetencias Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cv_extractions")
 }
 
 model Candidate {

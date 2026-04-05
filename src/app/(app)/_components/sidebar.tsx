@@ -75,12 +75,12 @@ const navSections: NavSection[] = [
 
 const footerItems: NavItem[] = [
   { id: "notificacoes", label: "Notificações", icon: Bell, comingSoon: true },
-  {
-    id: "configuracoes",
-    label: "Configurações",
-    icon: Settings,
-    href: "/configuracoes",
-  },
+  // {
+  //   id: "configuracoes",
+  //   label: "Configurações",
+  //   icon: Settings,
+  //   href: "/configuracoes",
+  // },
 ]
 
 export function Sidebar({ user, onLogout }: SidebarProps) {

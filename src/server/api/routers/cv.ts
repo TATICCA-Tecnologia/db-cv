@@ -26,6 +26,7 @@ export const cvRouter = createTRPCRouter({
   list: publicProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db.cv.findMany({
       orderBy: { submittedAt: "desc" },
+      include: { extraction: true },
     })
     return rows.map(mapCvToDto)
   }),
@@ -33,7 +34,10 @@ export const cvRouter = createTRPCRouter({
   byId: publicProcedure
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
-      const row = await ctx.db.cv.findUnique({ where: { id: input.id } })
+      const row = await ctx.db.cv.findUnique({
+        where: { id: input.id },
+        include: { extraction: true },
+      })
       if (!row) {
         throw new TRPCError({ code: "NOT_FOUND", message: "CV não encontrado" })
       }
@@ -69,6 +73,7 @@ export const cvRouter = createTRPCRouter({
         cvUrl: input.cvUrl,
         summary: input.resumo,
       },
+      include: { extraction: true },
     })
     return mapCvToDto(row)
   }),
@@ -111,6 +116,7 @@ export const cvRouter = createTRPCRouter({
           cvUrl: patch.cvUrl ?? exists.cvUrl,
           summary: patch.resumo ?? exists.summary,
         },
+        include: { extraction: true },
       })
       return mapCvToDto(row)
     }),

@@ -1,5 +1,6 @@
 import { db } from "@/server/db"
 import { CV_IMPORT_SUMMARY } from "./constants"
+import type { CvGeminiMergeFields } from "./map-gemini-extraction-to-cv"
 import type { ParsedImportRow } from "./types"
 
 const DEFAULT_IMPORT_FIELDS = {
@@ -10,29 +11,47 @@ const DEFAULT_IMPORT_FIELDS = {
   status: "novo",
 } as const
 
-function buildCvCreateData(row: ParsedImportRow, storageKey: string | null) {
+function buildCvCreateData(
+  row: ParsedImportRow,
+  storageKey: string | null,
+  gemini: CvGeminiMergeFields | null,
+) {
+  const g = gemini ?? {}
+  const phone =
+    (g.phone?.trim() || row.phoneNorm.trim() || "—")
   return {
-    name: row.nome,
+    name: (g.name?.trim() || row.nome.trim() || "—"),
     email: row.emailNorm,
-    phone: row.phoneNorm,
-    ...DEFAULT_IMPORT_FIELDS,
+    phone,
+    jobTitle: (g.jobTitle?.trim() || DEFAULT_IMPORT_FIELDS.jobTitle),
+    experience: (g.experience?.trim() || DEFAULT_IMPORT_FIELDS.experience),
+    location: (g.location?.trim() || DEFAULT_IMPORT_FIELDS.location),
+    skills: g.skills ?? DEFAULT_IMPORT_FIELDS.skills,
+    status: DEFAULT_IMPORT_FIELDS.status,
     submittedAt: row.submittedAt,
     cvUrl: row.pdfUrl,
     storageKey,
-    summary: CV_IMPORT_SUMMARY,
+    summary: (g.summary?.trim() || CV_IMPORT_SUMMARY),
   }
+}
+
+export type UpsertCvFromSheetRowResult = {
+  action: "created" | "updated"
+  cvId: string
 }
 
 export async function upsertCvFromSheetRow(
   row: ParsedImportRow,
   storageKey: string | null,
-): Promise<"created" | "updated"> {
-  const payload = buildCvCreateData(row, storageKey)
+  gemini: CvGeminiMergeFields | null = null,
+): Promise<UpsertCvFromSheetRowResult> {
+  const payload = buildCvCreateData(row, storageKey, gemini)
 
   const exactMatch = await db.cv.findFirst({
     where: { email: row.emailNorm, cvUrl: row.pdfUrl },
   })
   if (exactMatch) {
+    const g = gemini
     await db.cv.update({
       where: { id: exactMatch.id },
       data: {
@@ -40,10 +59,25 @@ export async function upsertCvFromSheetRow(
         phone: payload.phone,
         submittedAt: payload.submittedAt,
         storageKey: storageKey ?? exactMatch.storageKey,
-        summary: payload.summary,
+        summary:
+          g == null
+            ? payload.summary
+            : g.summary != null
+              ? payload.summary
+              : exactMatch.summary,
+        ...(g != null && g.jobTitle != null
+          ? { jobTitle: payload.jobTitle }
+          : {}),
+        ...(g != null && g.experience != null
+          ? { experience: payload.experience }
+          : {}),
+        ...(g != null && g.location != null
+          ? { location: payload.location }
+          : {}),
+        ...(g != null && g.skills != null ? { skills: payload.skills } : {}),
       },
     })
-    return "updated"
+    return { action: "updated", cvId: exactMatch.id }
   }
 
   const samePdf = await db.cv.findFirst({
@@ -51,11 +85,12 @@ export async function upsertCvFromSheetRow(
   })
 
   if (samePdf && samePdf.email !== row.emailNorm) {
-    await db.cv.create({ data: payload })
-    return "created"
+    const created = await db.cv.create({ data: payload })
+    return { action: "created", cvId: created.id }
   }
 
   if (samePdf) {
+    const g = gemini
     await db.cv.update({
       where: { id: samePdf.id },
       data: {
@@ -64,12 +99,27 @@ export async function upsertCvFromSheetRow(
         phone: payload.phone,
         submittedAt: payload.submittedAt,
         storageKey: storageKey ?? samePdf.storageKey,
-        summary: payload.summary,
+        summary:
+          g == null
+            ? payload.summary
+            : g.summary != null
+              ? payload.summary
+              : samePdf.summary,
+        ...(g != null && g.jobTitle != null
+          ? { jobTitle: payload.jobTitle }
+          : {}),
+        ...(g != null && g.experience != null
+          ? { experience: payload.experience }
+          : {}),
+        ...(g != null && g.location != null
+          ? { location: payload.location }
+          : {}),
+        ...(g != null && g.skills != null ? { skills: payload.skills } : {}),
       },
     })
-    return "updated"
+    return { action: "updated", cvId: samePdf.id }
   }
 
-  await db.cv.create({ data: payload })
-  return "created"
+  const created = await db.cv.create({ data: payload })
+  return { action: "created", cvId: created.id }
 }

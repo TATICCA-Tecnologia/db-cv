@@ -12,11 +12,8 @@ import {
   Briefcase,
   Calendar,
   Mail,
-  Phone,
   MoreVertical,
-  MessageSquare,
   Clock,
-  ChevronDown,
   Plus,
   Download,
   Upload
@@ -24,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -40,23 +37,43 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CandidateDetailModal } from "./candidate-detail-modal"
 import {
   type Candidate,
-  mockCandidates,
   pipelineStages,
   candidateStatusColors,
   candidateStatusLabels,
 } from "@/app/(app)/utils/candidates"
+import { trpc } from "@/trpc/react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export function CandidatesPage() {
-  const [candidates, setCandidates] = useState<Candidate[]>(mockCandidates)
+  const utils = trpc.useUtils()
+  const { data: candidates = [], isLoading, isError } =
+    trpc.candidate.list.useQuery()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban")
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [filterCargo, setFilterCargo] = useState<string>("all")
   const [filterFonte, setFilterFonte] = useState<string>("all")
+
+  const updateMutation = trpc.candidate.update.useMutation({
+    onSuccess: (updated) => {
+      void utils.candidate.list.invalidate()
+      setSelectedCandidate((prev) =>
+        prev?.id === updated.id ? updated : prev,
+      )
+    },
+  })
+  const updateStatusMutation = trpc.candidate.updateStatus.useMutation({
+    onSuccess: (updated) => {
+      void utils.candidate.list.invalidate()
+      setSelectedCandidate((prev) =>
+        prev?.id === updated.id ? updated : prev,
+      )
+    },
+  })
 
   const cargos = [...new Set(candidates.map(c => c.cargo))]
   const fontes = [...new Set(candidates.map(c => c.fonte))]
@@ -75,14 +92,33 @@ export function CandidatesPage() {
   })
 
   const toggleFavorite = (id: string) => {
-    setCandidates(prev => 
-      prev.map(c => c.id === id ? { ...c, favorito: !c.favorito } : c)
-    )
+    const c = candidates.find((x) => x.id === id)
+    if (!c) return
+    updateMutation.mutate({ id, data: { favorito: !c.favorito } })
   }
 
   const moveCandidate = (candidateId: string, newStatus: Candidate["status"]) => {
-    setCandidates(prev =>
-      prev.map(c => c.id === candidateId ? { ...c, status: newStatus } : c)
+    updateStatusMutation.mutate({ id: candidateId, status: newStatus })
+  }
+
+  const mutationPending =
+    updateMutation.isPending || updateStatusMutation.isPending
+
+  if (isError) {
+    return (
+      <p className="text-sm text-destructive">
+        Não foi possível carregar os candidatos.
+      </p>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-10 w-full max-w-2xl" />
+        <Skeleton className="h-96 w-full" />
+      </div>
     )
   }
 
@@ -122,8 +158,10 @@ export function CandidatesPage() {
             </div>
           </div>
           <button 
+            type="button"
             onClick={(e) => { e.stopPropagation(); toggleFavorite(candidate.id) }}
-            className="text-muted-foreground hover:text-yellow-400 transition-colors"
+            disabled={mutationPending}
+            className="text-muted-foreground hover:text-yellow-400 transition-colors disabled:opacity-50"
           >
             {candidate.favorito ? (
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -303,8 +341,10 @@ export function CandidatesPage() {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <button 
+                          type="button"
                           onClick={(e) => { e.stopPropagation(); toggleFavorite(candidate.id) }}
-                          className="text-muted-foreground hover:text-yellow-400 transition-colors"
+                          disabled={mutationPending}
+                          className="text-muted-foreground hover:text-yellow-400 transition-colors disabled:opacity-50"
                         >
                           {candidate.favorito ? (
                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -380,7 +420,6 @@ export function CandidatesPage() {
           onClose={() => setSelectedCandidate(null)}
           onStatusChange={(newStatus) => {
             moveCandidate(selectedCandidate.id, newStatus)
-            setSelectedCandidate(prev => prev ? { ...prev, status: newStatus } : null)
           }}
         />
       )}
