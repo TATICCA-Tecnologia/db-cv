@@ -26,6 +26,31 @@ import { CvPdfViewerModal } from "./cv-pdf-viewer-modal"
 import { trpc } from "@/trpc/react"
 import { Skeleton } from "@/components/ui/skeleton"
 
+function getIdiomasDisplay(cv: CV): string {
+  const idiomas = cv.extracao?.idiomas ?? []
+  if (idiomas.length === 0) return "Não informado"
+  const labels = idiomas
+    .map((i) => {
+      if (!i.idioma) return null
+      if (!i.nivel) return i.idioma
+      return `${i.idioma} (${i.nivel})`
+    })
+    .filter((v): v is string => Boolean(v))
+  if (labels.length === 0) return "Não informado"
+  return labels.join(", ")
+}
+
+function getEducacaoDisplay(cv: CV): string {
+  const educacao = cv.extracao?.educacao ?? []
+  if (educacao.length === 0) return "Não informado"
+  const first = educacao[0]
+  if (!first) return "Não informado"
+  const curso = first.curso?.trim()
+  const instituicao = first.instituicao?.trim()
+  const grau = first.grau?.trim()
+  return [grau, curso, instituicao].filter(Boolean).join(" - ") || "Não informado"
+}
+
 export function CVList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("todos")
@@ -39,13 +64,26 @@ export function CVList() {
   const cargos = [...new Set(cvs.map((cv) => cv.cargo))]
 
   const filteredCVs = cvs.filter((cv) => {
+    const idiomasText = (cv.extracao?.idiomas ?? [])
+      .map((i) => [i.idioma, i.nivel].filter(Boolean).join(" "))
+      .join(" ")
+      .toLowerCase()
+    const educacaoText = (cv.extracao?.educacao ?? [])
+      .map((e) => [e.grau, e.curso, e.instituicao].filter(Boolean).join(" "))
+      .join(" ")
+      .toLowerCase()
+    const resumoText = (cv.extracao?.resumoProfissional ?? "").toLowerCase()
+
     const matchesSearch =
       cv.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cv.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cv.skills.some((skill) =>
         skill.toLowerCase().includes(searchQuery.toLowerCase())
       ) ||
-      cv.cargo.toLowerCase().includes(searchQuery.toLowerCase())
+      cv.cargo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      idiomasText.includes(searchQuery.toLowerCase()) ||
+      educacaoText.includes(searchQuery.toLowerCase()) ||
+      resumoText.includes(searchQuery.toLowerCase())
 
     const matchesStatus = statusFilter === "todos" || cv.status === statusFilter
     const matchesCargo = cargoFilter === "todos" || cv.cargo === cargoFilter
@@ -129,6 +167,8 @@ export function CVList() {
               <TableHead className="text-foreground font-semibold">Cargo</TableHead>
               <TableHead className="text-foreground font-semibold hidden md:table-cell">Localização</TableHead>
               <TableHead className="text-foreground font-semibold hidden lg:table-cell">Experiência</TableHead>
+              <TableHead className="text-foreground font-semibold hidden xl:table-cell">Idiomas</TableHead>
+              <TableHead className="text-foreground font-semibold hidden xl:table-cell">Educação</TableHead>
               <TableHead className="text-foreground font-semibold">Status</TableHead>
               <TableHead className="text-foreground font-semibold hidden sm:table-cell">Data</TableHead>
               <TableHead className="text-foreground font-semibold text-right">Ações</TableHead>
@@ -159,8 +199,14 @@ export function CVList() {
                     <span className="text-muted-foreground">{cv.localizacao}</span>
                   </div>
                 </TableCell>
-                <TableCell className="hidden lg:table-cell">
+                <TableCell className="hidden lg:table-cell max-w-40 truncate">
                   <span className="text-muted-foreground">{cv.experiencia}</span>
+                </TableCell>
+                <TableCell className="hidden xl:table-cell">
+                  <span className="text-muted-foreground">{getIdiomasDisplay(cv)}</span>
+                </TableCell>
+                <TableCell className="hidden xl:table-cell">
+                  <span className="text-muted-foreground">{getEducacaoDisplay(cv)}</span>
                 </TableCell>
                 <TableCell>
                   <Badge className={statusColors[cv.status]} variant="secondary">
