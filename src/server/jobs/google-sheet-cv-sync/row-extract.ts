@@ -89,6 +89,7 @@ export function parseImportRow(
       emailNorm: email || "sem-email@importado.local",
       phoneNorm: telefone || "—",
       pdfUrl,
+      sourceSheet: sourceLabel ?? "Aba principal",
       submittedAt: parseSubmittedAtFromSheet(dataRaw),
       lineLabel,
     },

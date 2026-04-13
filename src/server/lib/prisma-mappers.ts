@@ -158,6 +158,7 @@ export function mapCvToDto(
     dataSubmissao: formatDate(row.submittedAt),
     cvUrl: row.cvUrl,
     resumo: row.summary,
+    sourceSheet: row.sourceSheet,
     extracao: row.extraction ? mapCvExtractionToDto(row.extraction) : null,
   }
 }

@@ -13,6 +13,12 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { type CV, statusLabels, statusColors } from "@/app/(app)/utils/cv"
 
+const GERADO_IA = " (Gerado por IA)"
+
+function iaLabel(base: string) {
+  return `${base}${GERADO_IA}`
+}
+
 interface CVModalProps {
   cv: CV | null
   onClose: () => void
@@ -20,6 +26,12 @@ interface CVModalProps {
 
 export function CVModal({ cv, onClose }: CVModalProps) {
   if (!cv) return null
+
+  const ext = cv.extracao
+  const iaResumo = ext?.resumoProfissional?.trim() ?? ""
+  const summaryOutro = cv.resumo?.trim() ?? ""
+  const mostrarResumoAlternativo =
+    summaryOutro.length > 0 && summaryOutro !== iaResumo
 
   return (
     <Dialog
@@ -75,7 +87,9 @@ export function CVModal({ cv, onClose }: CVModalProps) {
                   <Briefcase className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Cargo</p>
+                  <p className="text-sm text-muted-foreground">
+                    {ext ? iaLabel("Cargo") : "Cargo"}
+                  </p>
                   <p className="font-medium text-foreground">{cv.cargo}</p>
                 </div>
               </div>
@@ -84,8 +98,12 @@ export function CVModal({ cv, onClose }: CVModalProps) {
                   <Clock className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Experiência</p>
-                  <p className="font-medium text-foreground">{cv.experiencia}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {ext ? iaLabel("Experiência") : "Experiência"}
+                  </p>
+                  <p className="font-medium text-foreground whitespace-pre-line">
+                    {cv.experiencia}
+                  </p>
                 </div>
               </div>
             </div>
@@ -95,7 +113,7 @@ export function CVModal({ cv, onClose }: CVModalProps) {
 
           <div className="flex flex-col gap-3">
             <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-              Competências
+              {ext ? iaLabel("Competências") : "Competências"}
             </h4>
             <div className="flex flex-wrap gap-2">
               {cv.skills.map((skill) => (
@@ -112,12 +130,288 @@ export function CVModal({ cv, onClose }: CVModalProps) {
 
           <Separator className="bg-border" />
 
-          <div className="flex flex-col gap-3">
-            <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-              Resumo
-            </h4>
-            <p className="text-muted-foreground leading-relaxed">{cv.resumo}</p>
-          </div>
+          {iaResumo ? (
+            <div className="flex flex-col gap-3">
+              <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                {iaLabel("Resumo profissional")}
+              </h4>
+              <p className="text-muted-foreground leading-relaxed">{iaResumo}</p>
+            </div>
+          ) : summaryOutro ? (
+            <div className="flex flex-col gap-3">
+              <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                Resumo
+              </h4>
+              <p className="text-muted-foreground leading-relaxed">{summaryOutro}</p>
+            </div>
+          ) : null}
+
+          {mostrarResumoAlternativo ? (
+            <>
+              <Separator className="bg-border" />
+              <div className="flex flex-col gap-3">
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  Resumo
+                </h4>
+                <p className="text-muted-foreground leading-relaxed">{summaryOutro}</p>
+              </div>
+            </>
+          ) : null}
+
+          {ext && ext.experiencias.length > 0 ? (
+            <>
+              <Separator className="bg-border" />
+              <div className="flex flex-col gap-4">
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  {iaLabel("Experiências")}
+                </h4>
+                <ul className="space-y-4 list-none">
+                  {ext.experiencias.map((exp, i) => (
+                    <li
+                      key={`${exp.empresa ?? ""}-${exp.cargo ?? ""}-${i}`}
+                      className="rounded-lg border border-border bg-secondary/30 p-4 space-y-2"
+                    >
+                      <p className="font-medium text-foreground">
+                        {[exp.cargo, exp.empresa].filter(Boolean).join(" · ") ||
+                          "Experiência"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {[
+                          exp.data_inicio,
+                          exp.atual ? "Atual" : exp.data_fim,
+                        ]
+                          .filter(Boolean)
+                          .join(" → ")}
+                      </p>
+                      {exp.descricao?.trim() ? (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            {iaLabel("Descrição")}
+                          </p>
+                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {exp.descricao}
+                          </p>
+                        </div>
+                      ) : null}
+                      {exp.skills.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {exp.skills.map((s) => (
+                            <Badge
+                              key={s}
+                              variant="secondary"
+                              className="bg-secondary text-foreground text-xs font-normal"
+                            >
+                              {s}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : null}
+
+          {ext && ext.educacao.length > 0 ? (
+            <>
+              <Separator className="bg-border" />
+              <div className="flex flex-col gap-3">
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  {iaLabel("Educação")}
+                </h4>
+                <ul className="space-y-3 list-none">
+                  {ext.educacao.map((ed, i) => (
+                    <li
+                      key={`${ed.instituicao ?? ""}-${ed.curso ?? ""}-${i}`}
+                      className="text-sm text-muted-foreground"
+                    >
+                      <span className="text-foreground font-medium">
+                        {[ed.grau, ed.curso].filter(Boolean).join(" — ") ||
+                          "Formação"}
+                      </span>
+                      {ed.instituicao ? (
+                        <span className="block">{ed.instituicao}</span>
+                      ) : null}
+                      {[ed.data_inicio, ed.data_fim].filter(Boolean).length >
+                      0 ? (
+                        <span className="block text-xs">
+                          {[ed.data_inicio, ed.data_fim]
+                            .filter(Boolean)
+                            .join(" → ")}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : null}
+
+          {ext && ext.idiomas.length > 0 ? (
+            <>
+              <Separator className="bg-border" />
+              <div className="flex flex-col gap-3">
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  {iaLabel("Idiomas")}
+                </h4>
+                <ul className="space-y-1 list-none text-sm text-muted-foreground">
+                  {ext.idiomas.map((idm, i) => (
+                    <li key={`${idm.idioma ?? ""}-${i}`}>
+                      {[idm.idioma, idm.nivel].filter(Boolean).join(" — ") ||
+                        "—"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : null}
+
+          {ext && ext.certificacoes.length > 0 ? (
+            <>
+              <Separator className="bg-border" />
+              <div className="flex flex-col gap-3">
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  {iaLabel("Certificações")}
+                </h4>
+                <ul className="space-y-2 list-none text-sm text-muted-foreground">
+                  {ext.certificacoes.map((c, i) => (
+                    <li key={`${c.nome ?? ""}-${i}`}>
+                      <span className="text-foreground font-medium">
+                        {c.nome ?? "Certificação"}
+                      </span>
+                      {[c.instituicao, c.data].filter(Boolean).length > 0 ? (
+                        <span className="block text-xs">
+                          {[c.instituicao, c.data].filter(Boolean).join(" · ")}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : null}
+
+          {ext && ext.projetos.length > 0 ? (
+            <>
+              <Separator className="bg-border" />
+              <div className="flex flex-col gap-4">
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  {iaLabel("Projetos")}
+                </h4>
+                <ul className="space-y-4 list-none">
+                  {ext.projetos.map((proj, i) => (
+                    <li
+                      key={`${proj.nome ?? ""}-${i}`}
+                      className="rounded-lg border border-border bg-secondary/30 p-4 space-y-2"
+                    >
+                      <p className="font-medium text-foreground">
+                        {proj.nome ?? "Projeto"}
+                      </p>
+                      {proj.descricao?.trim() ? (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            {iaLabel("Descrição")}
+                          </p>
+                          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                            {proj.descricao}
+                          </p>
+                        </div>
+                      ) : null}
+                      {proj.tecnologias.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {proj.tecnologias.map((t) => (
+                            <Badge
+                              key={t}
+                              variant="secondary"
+                              className="bg-secondary text-foreground text-xs font-normal"
+                            >
+                              {t}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                      {proj.link?.trim() ? (
+                        <a
+                          href={proj.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-primary underline-offset-4 hover:underline break-all"
+                        >
+                          {proj.link}
+                        </a>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : null}
+
+          {ext &&
+          (ext.analiseIa.areaProfissional?.trim() ||
+            ext.analiseIa.senioridade?.trim() ||
+            ext.analiseIa.anosExperiencia > 0 ||
+            ext.analiseIa.principaisCompetencias.length > 0) ? (
+            <>
+              <Separator className="bg-border" />
+              <div className="flex flex-col gap-3">
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                  {iaLabel("Análise")}
+                </h4>
+                <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3 text-sm">
+                  {ext.analiseIa.areaProfissional?.trim() ? (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                        {iaLabel("Área profissional")}
+                      </p>
+                      <p className="text-foreground">
+                        {ext.analiseIa.areaProfissional}
+                      </p>
+                    </div>
+                  ) : null}
+                  {ext.analiseIa.senioridade?.trim() ? (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                        {iaLabel("Senioridade")}
+                      </p>
+                      <p className="text-foreground">
+                        {ext.analiseIa.senioridade}
+                      </p>
+                    </div>
+                  ) : null}
+                  {ext.analiseIa.anosExperiencia > 0 ? (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                        {iaLabel("Anos de experiência (estimativa)")}
+                      </p>
+                      <p className="text-foreground">
+                        ~{ext.analiseIa.anosExperiencia}
+                      </p>
+                    </div>
+                  ) : null}
+                  {ext.analiseIa.principaisCompetencias.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">
+                        {iaLabel("Principais competências")}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ext.analiseIa.principaisCompetencias.map((s) => (
+                          <Badge
+                            key={s}
+                            variant="secondary"
+                            className="bg-secondary text-foreground text-xs font-normal"
+                          >
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : null}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90" asChild>

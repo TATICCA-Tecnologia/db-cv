@@ -74,6 +74,7 @@ export interface CV {
   dataSubmissao: string
   cvUrl: string
   resumo: string
+  sourceSheet?: string | null
   extracao?: CvExtracaoDto | null
 }
 

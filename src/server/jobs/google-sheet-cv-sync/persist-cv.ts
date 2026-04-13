@@ -30,6 +30,7 @@ function buildCvCreateData(
     status: DEFAULT_IMPORT_FIELDS.status,
     submittedAt: row.submittedAt,
     cvUrl: row.pdfUrl,
+    sourceSheet: row.sourceSheet,
     storageKey,
     summary: (g.summary?.trim() || CV_IMPORT_SUMMARY),
   }
@@ -58,6 +59,7 @@ export async function upsertCvFromSheetRow(
         name: payload.name,
         phone: payload.phone,
         submittedAt: payload.submittedAt,
+        sourceSheet: payload.sourceSheet,
         storageKey: storageKey ?? exactMatch.storageKey,
         summary:
           g == null
@@ -98,6 +100,7 @@ export async function upsertCvFromSheetRow(
         email: payload.email,
         phone: payload.phone,
         submittedAt: payload.submittedAt,
+        sourceSheet: payload.sourceSheet,
         storageKey: storageKey ?? samePdf.storageKey,
         summary:
           g == null

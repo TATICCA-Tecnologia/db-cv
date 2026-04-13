@@ -55,6 +55,7 @@ export function CVList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("todos")
   const [cargoFilter, setCargoFilter] = useState<string>("todos")
+  const [sourceFilter, setSourceFilter] = useState<string>("todos")
   const [selectedCV, setSelectedCV] = useState<CV | null>(null)
   const [pdfCvId, setPdfCvId] = useState<string | null>(null)
   const [pdfCvTitle, setPdfCvTitle] = useState<string | undefined>(undefined)
@@ -62,6 +63,7 @@ export function CVList() {
   const { data: cvs = [], isLoading, isError } = trpc.cv.list.useQuery()
 
   const cargos = [...new Set(cvs.map((cv) => cv.cargo))]
+  const sources = [...new Set(cvs.map((cv) => cv.sourceSheet ?? "Não informado"))]
 
   const filteredCVs = cvs.filter((cv) => {
     const idiomasText = (cv.extracao?.idiomas ?? [])
@@ -87,8 +89,10 @@ export function CVList() {
 
     const matchesStatus = statusFilter === "todos" || cv.status === statusFilter
     const matchesCargo = cargoFilter === "todos" || cv.cargo === cargoFilter
+    const cvSource = cv.sourceSheet ?? "Não informado"
+    const matchesSource = sourceFilter === "todos" || cvSource === sourceFilter
 
-    return matchesSearch && matchesStatus && matchesCargo
+    return matchesSearch && matchesStatus && matchesCargo && matchesSource
   })
 
   if (isError) {
@@ -149,6 +153,19 @@ export function CVList() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-[220px] bg-secondary border-border">
+              <SelectValue placeholder="Origem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas as origens</SelectItem>
+              {sources.map((source) => (
+                <SelectItem key={source} value={source}>
+                  {source}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -167,6 +184,7 @@ export function CVList() {
               <TableHead className="text-foreground font-semibold">Cargo</TableHead>
               <TableHead className="text-foreground font-semibold hidden md:table-cell">Localização</TableHead>
               <TableHead className="text-foreground font-semibold hidden lg:table-cell">Experiência</TableHead>
+              <TableHead className="text-foreground font-semibold hidden xl:table-cell">Origem</TableHead>
               <TableHead className="text-foreground font-semibold hidden xl:table-cell">Idiomas</TableHead>
               <TableHead className="text-foreground font-semibold hidden xl:table-cell">Educação</TableHead>
               <TableHead className="text-foreground font-semibold">Status</TableHead>
@@ -201,6 +219,9 @@ export function CVList() {
                 </TableCell>
                 <TableCell className="hidden lg:table-cell max-w-40 truncate">
                   <span className="text-muted-foreground">{cv.experiencia}</span>
+                </TableCell>
+                <TableCell className="hidden xl:table-cell">
+                  <span className="text-muted-foreground">{cv.sourceSheet ?? "Não informado"}</span>
                 </TableCell>
                 <TableCell className="hidden xl:table-cell">
                   <span className="text-muted-foreground">{getIdiomasDisplay(cv)}</span>

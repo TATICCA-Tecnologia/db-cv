@@ -16,6 +16,7 @@ export type ParsedImportRow = {
   emailNorm: string
   phoneNorm: string
   pdfUrl: string
+  sourceSheet: string
   submittedAt: Date
   lineLabel: string
 }
