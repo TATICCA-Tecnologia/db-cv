@@ -28,7 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 function getIdiomasDisplay(cv: CV): string {
   const idiomas = cv.extracao?.idiomas ?? []
-  if (idiomas.length === 0) return "Não informado"
+  if (idiomas.length === 0) return "Não Identificado"
   const labels = idiomas
     .map((i) => {
       if (!i.idioma) return null
@@ -36,7 +36,7 @@ function getIdiomasDisplay(cv: CV): string {
       return `${i.idioma} (${i.nivel})`
     })
     .filter((v): v is string => Boolean(v))
-  if (labels.length === 0) return "Não informado"
+  if (labels.length === 0) return "Não Identificado"
   return labels.join(", ")
 }
 
@@ -60,12 +60,28 @@ export function CVList() {
   const [pdfCvId, setPdfCvId] = useState<string | null>(null)
   const [pdfCvTitle, setPdfCvTitle] = useState<string | undefined>(undefined)
 
-  const { data: cvs = [], isLoading, isError } = trpc.cv.list.useQuery()
+  const { data: cvs = [] as CV[], isLoading, isError } = trpc.cv.list.useQuery()
+  const utils = trpc.useUtils()
+  const updateCvStatus = trpc.cv.update.useMutation({
+    onSuccess: async (updatedCv) => {
+      setSelectedCV((prev) => (prev?.id === updatedCv.id ? updatedCv : prev))
+      await utils.cv.list.invalidate()
+    },
+  })
 
-  const cargos = [...new Set(cvs.map((cv) => cv.cargo))]
-  const sources = [...new Set(cvs.map((cv) => cv.sourceSheet ?? "Não informado"))]
+  const handleMarkAsInAnalysis = (cvId: string) => {
+    updateCvStatus.mutate({
+      id: cvId,
+      data: { status: "em_analise" },
+    })
+  }
 
-  const filteredCVs = cvs.filter((cv) => {
+  const cargos = [...new Set(cvs.map((cv: CV) => cv.cargo) as string[])]
+  const sources = [
+    ...new Set(cvs.map((cv: CV) => cv.sourceSheet ?? "Não informado") as string[]),
+  ]
+
+  const filteredCVs = cvs.filter((cv: CV) => {
     const idiomasText = (cv.extracao?.idiomas ?? [])
       .map((i) => [i.idioma, i.nivel].filter(Boolean).join(" "))
       .join(" ")
@@ -193,7 +209,7 @@ export function CVList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredCVs.map((cv) => (
+            {filteredCVs.map((cv: CV) => (
               <TableRow
                 key={cv.id}
                 className="hover:bg-secondary/30 cursor-pointer transition-colors"
@@ -287,7 +303,12 @@ export function CVList() {
         </div>
       )}
 
-      <CVModal cv={selectedCV} onClose={() => setSelectedCV(null)} />
+      <CVModal
+        cv={selectedCV}
+        onClose={() => setSelectedCV(null)}
+        onMarkAsInAnalysis={handleMarkAsInAnalysis}
+        isUpdatingStatus={updateCvStatus.isPending}
+      />
       <CvPdfViewerModal
         cvId={pdfCvId}
         title={pdfCvTitle ? `CV — ${pdfCvTitle}` : undefined}

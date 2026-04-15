@@ -22,9 +22,16 @@ function iaLabel(base: string) {
 interface CVModalProps {
   cv: CV | null
   onClose: () => void
+  onMarkAsInAnalysis: (cvId: string) => void
+  isUpdatingStatus?: boolean
 }
 
-export function CVModal({ cv, onClose }: CVModalProps) {
+export function CVModal({
+  cv,
+  onClose,
+  onMarkAsInAnalysis,
+  isUpdatingStatus = false,
+}: CVModalProps) {
   if (!cv) return null
 
   const ext = cv.extracao
@@ -88,7 +95,7 @@ export function CVModal({ cv, onClose }: CVModalProps) {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">
-                    {ext ? iaLabel("Cargo") : "Cargo"}
+                    {ext ? iaLabel("Último Cargo") : "Último Cargo"}
                   </p>
                   <p className="font-medium text-foreground">{cv.cargo}</p>
                 </div>
@@ -426,7 +433,12 @@ export function CVModal({ cv, onClose }: CVModalProps) {
                 Ver PDF (página)
               </Link>
             </Button>
-            <Button variant="outline" className="flex-1 border-border">
+            <Button
+              variant="outline"
+              className="flex-1 border-border"
+              disabled={cv.status === "em_analise" || isUpdatingStatus}
+              onClick={() => onMarkAsInAnalysis(cv.id)}
+            >
               Marcar como Em Análise
             </Button>
           </div>
