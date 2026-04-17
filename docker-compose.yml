@@ -27,7 +27,7 @@ services:
       - .env
     environment:
       SYNC_CRON_URL: ${SYNC_CRON_URL:-http://app:3000/api/cron/sync-google-sheet}
-      SYNC_CRON_INTERVAL_SECONDS: ${SYNC_CRON_INTERVAL_SECONDS:-43200}
+      SYNC_CRON_INTERVAL_SECONDS: ${SYNC_CRON_INTERVAL_SECONDS:-10800}
     depends_on:
       app:
         condition: service_healthy

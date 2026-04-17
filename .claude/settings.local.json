@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm add *)",
+      "Bash(npx auth *)",
+      "Bash(openssl rand *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('base64'\\)\\)\")",
+      "Bash(pnpm db:seed)",
+      "Bash(pnpm exec *)",
+      "Bash(tsx -e ' *)",
+      "Bash(pnpm prisma *)"
+    ]
+  }
+}

@@ -8,8 +8,9 @@ export default auth((req) => {
   const isLoginPage = nextUrl.pathname === "/login"
   const isChangePasswordPage = nextUrl.pathname === "/change-password"
   const isApiAuth = nextUrl.pathname.startsWith("/api/auth")
+  const isApiTrpc = nextUrl.pathname.startsWith("/api/trpc")
 
-  if (isApiAuth) return NextResponse.next()
+  if (isApiAuth || isApiTrpc) return NextResponse.next()
 
   if (!isLoggedIn && !isLoginPage) {
     return NextResponse.redirect(new URL("/login", nextUrl))
