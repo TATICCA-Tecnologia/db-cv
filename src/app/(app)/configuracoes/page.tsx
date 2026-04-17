@@ -44,6 +44,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
@@ -352,6 +353,9 @@ export default function ConfiguracoesPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Criar Utilizador</DialogTitle>
+                <DialogDescription>
+                  O utilizador receberá acesso ao sistema e será obrigado a alterar a palavra-passe no primeiro login.
+                </DialogDescription>
               </DialogHeader>
               <Form {...createUserForm}>
                 <form
