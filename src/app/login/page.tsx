@@ -2,18 +2,18 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { LoginForm } from "./_components/login-form"
-import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
-  const { user, login, isReady } = useAuth()
+  const { status } = useSession()
   const router = useRouter()
 
   useEffect(() => {
-    if (isReady && user) router.replace("/")
-  }, [user, isReady, router])
+    if (status === "authenticated") router.replace("/")
+  }, [status, router])
 
-  if (!isReady) {
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-sm text-muted-foreground">A carregar…</p>
@@ -21,7 +21,7 @@ export default function LoginPage() {
     )
   }
 
-  if (user) return null
+  if (status === "authenticated") return null
 
-  return <LoginForm onLogin={(email) => login(email)} />
+  return <LoginForm />
 }

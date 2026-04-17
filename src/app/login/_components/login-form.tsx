@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import { Eye, EyeOff, LogIn } from "lucide-react"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -28,13 +30,10 @@ const loginSchema = z.object({
   password: z.string().min(1, "Palavra-passe obrigatória"),
 })
 
-interface LoginFormProps {
-  onLogin: (email: string, password: string) => void
-}
-
-export function LoginForm({ onLogin }: LoginFormProps) {
+export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const form = useZodForm(loginSchema, {
     defaultValues: { email: "", password: "" },
@@ -43,15 +42,21 @@ export function LoginForm({ onLogin }: LoginFormProps) {
   const onSubmit = form.handleSubmit(async (values) => {
     form.clearErrors("root")
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    if (values.email === "admin@tatica.pt" && values.password === "admin123") {
-      onLogin(values.email, values.password)
-    } else {
+    const result = await signIn("credentials", {
+      email: values.email,
+      password: values.password,
+      redirect: false,
+    })
+
+    if (result?.error) {
       form.setError("root", {
         type: "manual",
         message: "Email ou palavra-passe incorretos",
       })
+    } else {
+      router.push("/")
+      router.refresh()
     }
 
     setIsLoading(false)
@@ -152,16 +157,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
                   </>
                 )}
               </Button>
-
-              <div className="mt-4 p-4 rounded-lg bg-secondary/50 border border-border">
-                <p className="text-xs text-muted-foreground text-center">
-                  <strong className="text-foreground">Credenciais de teste:</strong>
-                  <br />
-                  Email: admin@tatica.pt
-                  <br />
-                  Palavra-passe: admin123
-                </p>
-              </div>
             </form>
           </Form>
         </CardContent>

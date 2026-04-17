@@ -1,5 +1,6 @@
 import "dotenv/config"
 import { PrismaClient } from "@prisma/client"
+import bcrypt from "bcryptjs"
 
 const db = new PrismaClient()
 
@@ -35,6 +36,21 @@ async function main() {
       weeklyReport: true,
     },
   })
+
+  const hashedPassword = await bcrypt.hash("admin123", 12)
+
+  await db.user.upsert({
+    where: { email: "admin@tatica.pt" },
+    update: {},
+    create: {
+      name: "Administrador Tática",
+      email: "admin@tatica.pt",
+      password: hashedPassword,
+      role: "admin",
+    },
+  })
+
+  console.log("✓ Utilizador admin criado: admin@tatica.pt / admin123")
 }
 
 main()

@@ -1,15 +1,8 @@
 "use client"
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react"
+import { createContext, useContext, useCallback } from "react"
+import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
-
-const STORAGE_KEY = "banco-cv-session"
 
 export interface AuthUser {
   name: string
@@ -18,7 +11,6 @@ export interface AuthUser {
 
 type AuthContextValue = {
   user: AuthUser | null
-  login: (email: string) => void
   logout: () => void
   isReady: boolean
 }
@@ -26,41 +18,23 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [isReady, setIsReady] = useState(false)
+  const { data: session, status } = useSession()
   const router = useRouter()
 
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY)
-      if (raw) setUser(JSON.parse(raw) as AuthUser)
-    } catch {
-      sessionStorage.removeItem(STORAGE_KEY)
-    }
-    setIsReady(true)
-  }, [])
-
-  useEffect(() => {
-    if (!isReady) return
-    if (user) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user))
-    else sessionStorage.removeItem(STORAGE_KEY)
-  }, [user, isReady])
-
-  const login = useCallback(
-    (email: string) => {
-      setUser({ name: "Administrador Tática", email })
-      router.push("/")
-    },
-    [router],
-  )
-
-  const logout = useCallback(() => {
-    setUser(null)
+  const logout = useCallback(async () => {
+    await signOut({ redirect: false })
     router.push("/login")
   }, [router])
 
+  const user: AuthUser | null =
+    session?.user?.email
+      ? { name: session.user.name ?? session.user.email, email: session.user.email }
+      : null
+
+  const isReady = status !== "loading"
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isReady }}>
+    <AuthContext.Provider value={{ user, logout, isReady }}>
       {children}
     </AuthContext.Provider>
   )
