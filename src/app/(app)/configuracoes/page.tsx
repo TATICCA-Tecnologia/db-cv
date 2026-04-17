@@ -13,6 +13,8 @@ import {
   Edit2,
   GripVertical,
   Save,
+  ShieldCheck,
+  RefreshCw,
 } from "lucide-react"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -189,6 +191,10 @@ export default function ConfiguracoesPage() {
           <TabsTrigger value="integrations" className="gap-2">
             <Link className="h-4 w-4" />
             Integrações
+          </TabsTrigger>
+          <TabsTrigger value="admin" className="gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Admin
           </TabsTrigger>
         </TabsList>
 
@@ -765,7 +771,100 @@ export default function ConfiguracoesPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="admin" className="mt-6">
+          <AdminTab />
+        </TabsContent>
       </Tabs>
+    </div>
+  )
+}
+
+function AdminTab() {
+  const syncMutation = trpc.settings.admin.syncGoogleSheet.useMutation({
+    onSuccess: (result) => {
+      const msg = `Sincronização concluída — ${result.created} criados, ${result.updated} atualizados, ${result.skipped} ignorados`
+      if (result.errors.length > 0) {
+        toast.warning(msg)
+      } else {
+        toast.success(msg)
+      }
+    },
+    onError: (e) => toast.error(`Erro: ${e.message}`),
+  })
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Sincronização Google Sheets</CardTitle>
+          <CardDescription>
+            Importa CVs da folha de cálculo configurada e processa com IA. Normalmente corre
+            automaticamente, mas pode ser acionado manualmente aqui.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />
+              {syncMutation.isPending ? "A sincronizar..." : "Correr Sincronização Agora"}
+            </Button>
+          </div>
+
+          {syncMutation.data && (
+            <div className="p-4 bg-muted/50 rounded-lg text-sm space-y-3">
+              <p className="font-medium text-foreground">Último resultado:</p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="p-2 bg-background rounded border text-center">
+                  <p className="text-lg font-bold text-foreground">{syncMutation.data.fetchedRows}</p>
+                  <p className="text-xs text-muted-foreground">linhas lidas</p>
+                </div>
+                <div className="p-2 bg-background rounded border text-center">
+                  <p className="text-lg font-bold text-green-600">{syncMutation.data.created}</p>
+                  <p className="text-xs text-muted-foreground">criados</p>
+                </div>
+                <div className="p-2 bg-background rounded border text-center">
+                  <p className="text-lg font-bold text-blue-600">{syncMutation.data.updated}</p>
+                  <p className="text-xs text-muted-foreground">atualizados</p>
+                </div>
+                <div className="p-2 bg-background rounded border text-center">
+                  <p className="text-lg font-bold text-muted-foreground">{syncMutation.data.skipped}</p>
+                  <p className="text-xs text-muted-foreground">ignorados</p>
+                </div>
+                <div className="p-2 bg-background rounded border text-center">
+                  <p className="text-lg font-bold text-green-600">{syncMutation.data.pdfOk}</p>
+                  <p className="text-xs text-muted-foreground">PDFs OK</p>
+                </div>
+                <div className="p-2 bg-background rounded border text-center">
+                  <p className="text-lg font-bold text-destructive">{syncMutation.data.pdfFailed}</p>
+                  <p className="text-xs text-muted-foreground">PDFs falhados</p>
+                </div>
+              </div>
+              {syncMutation.data.errors.length > 0 && (
+                <div className="space-y-1">
+                  <p className="font-medium text-destructive">Erros:</p>
+                  {syncMutation.data.errors.map((e, i) => (
+                    <p key={i} className="text-xs text-destructive bg-destructive/10 p-2 rounded">{e}</p>
+                  ))}
+                </div>
+              )}
+              {syncMutation.data.warnings.length > 0 && (
+                <div className="space-y-1">
+                  <p className="font-medium text-yellow-600">Avisos ({syncMutation.data.warnings.length}):</p>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {syncMutation.data.warnings.map((w, i) => (
+                      <p key={i} className="text-xs text-yellow-700 bg-yellow-50 dark:bg-yellow-950/20 dark:text-yellow-400 p-2 rounded">{w}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
