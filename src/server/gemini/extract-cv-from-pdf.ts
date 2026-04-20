@@ -7,6 +7,8 @@ import {
 
 const DEFAULT_MODEL = "gemini-2.0-flash"
 const MAX_PDF_BYTES = 20 * 1024 * 1024
+const GEMINI_MAX_ATTEMPTS = 3
+const GEMINI_BASE_BACKOFF_MS = 2000
 
 export class GeminiCvExtractionError extends Error {
   constructor(
@@ -21,6 +23,41 @@ export class GeminiCvExtractionError extends Error {
 export type ExtractCvFromPdfOptions = {
   apiKey?: string
   model?: string
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function getErrorStatusCode(err: unknown): number | null {
+  if (!err || typeof err !== "object") return null
+  const obj = err as Record<string, unknown>
+  if (typeof obj.status === "number") return obj.status
+  if (typeof obj.code === "number") return obj.code
+  return null
+}
+
+function getRetryDelayMs(err: unknown, attempt: number): number {
+  if (!err || typeof err !== "object") return GEMINI_BASE_BACKOFF_MS * attempt
+  const obj = err as Record<string, unknown>
+  const retryAfter = obj.retryAfter
+  if (typeof retryAfter === "number" && retryAfter > 0) return retryAfter * 1000
+  if (typeof retryAfter === "string") {
+    const secs = Number(retryAfter)
+    if (!Number.isNaN(secs) && secs > 0) return secs * 1000
+  }
+  return GEMINI_BASE_BACKOFF_MS * attempt
+}
+
+function shouldRetryGeminiError(err: unknown, attempt: number): boolean {
+  if (attempt >= GEMINI_MAX_ATTEMPTS) return false
+  const statusCode = getErrorStatusCode(err)
+  if (statusCode === 429 || statusCode === 503) return true
+  if (!(err instanceof Error)) return false
+  return (
+    err.message.includes("429 Too Many Requests") ||
+    err.message.includes("Resource exhausted")
+  )
 }
 
 function extractJsonPayload(raw: string): string {
@@ -64,20 +101,36 @@ export async function extractCvFromPdfWithGemini(
 
   const base64 = pdfBuffer.toString("base64")
 
-  let text: string
-  try {
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: "application/pdf",
-          data: base64,
+  let text: string | null = null
+  let lastError: unknown
+  for (let attempt = 1; attempt <= GEMINI_MAX_ATTEMPTS; attempt++) {
+    try {
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: "application/pdf",
+            data: base64,
+          },
         },
-      },
-      { text: CV_PDF_EXTRACTION_PROMPT },
-    ])
-    text = result.response.text()
-  } catch (e) {
-    throw new GeminiCvExtractionError("Falha ao chamar a API Gemini.", e)
+        { text: CV_PDF_EXTRACTION_PROMPT },
+      ])
+      text = result.response.text()
+      break
+    } catch (e) {
+      lastError = e
+      if (shouldRetryGeminiError(e, attempt)) {
+        await sleep(getRetryDelayMs(e, attempt))
+        continue
+      }
+      throw new GeminiCvExtractionError("Falha ao chamar a API Gemini.", e)
+    }
+  }
+
+  if (text == null) {
+    throw new GeminiCvExtractionError(
+      "Falha ao chamar a API Gemini após tentativas de retry.",
+      lastError,
+    )
   }
 
   if (!text?.trim()) {
