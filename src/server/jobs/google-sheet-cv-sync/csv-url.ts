@@ -16,6 +16,12 @@ function parseGids(value: string): string[] {
     .filter(Boolean)
 }
 
+function labelForGidIndex(idx: number): string {
+  if (idx === 0) return "Experientes"
+  if (idx === 1) return "Estudantes"
+  return `Aba ${idx + 1}`
+}
+
 export function resolveGoogleSheetCsvSourcesFromEnv(): GoogleSheetCsvSource[] {
   const custom = process.env.GOOGLE_SHEETS_CSV_URL?.trim()
   if (custom) return [{ label: "CSV customizado", csvUrl: custom }]
@@ -46,7 +52,7 @@ export function resolveGoogleSheetCsvSourcesFromEnv(): GoogleSheetCsvSource[] {
   const multiGidsRaw = process.env.GOOGLE_SHEETS_GIDS?.trim()
   if (multiGidsRaw) {
     return parseGids(multiGidsRaw).map((gid, idx) => ({
-      label: `Aba ${idx + 1}`,
+      label: labelForGidIndex(idx),
       csvUrl: buildGoogleSheetCsvExportUrl(id, gid),
     }))
   }

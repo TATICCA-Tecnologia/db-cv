@@ -1,10 +1,4 @@
-import { renderToBuffer } from "@react-pdf/renderer"
-import { mapCvToDto } from "@/server/lib/prisma-mappers"
 import { db } from "@/server/db"
-import {
-  buildCvPdfFilename,
-  CvPdfDocument,
-} from "@/server/pdf/cv-pdf-document"
 import {
   getDocumentObjectBuffer,
   isMinioConfigured,
@@ -24,13 +18,12 @@ export async function GET(
     return new Response("CV não encontrado", { status: 404 })
   }
 
+  const safeName = (row.name || row.id).replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").slice(0, 48)
+  const filename = `cv-${safeName || row.id}.pdf`
   const storageKey = row.storageKey?.trim()
   if (storageKey && isMinioConfigured()) {
     try {
       const buffer = await getDocumentObjectBuffer(storageKey)
-      const cv = mapCvToDto(row)
-      const filename = buildCvPdfFilename(cv)
-
       return new Response(Buffer.from(buffer), {
         status: 200,
         headers: {
@@ -41,21 +34,34 @@ export async function GET(
         },
       })
     } catch {
-      /* PDF sintético abaixo */
+      /* fallback para URL original abaixo */
     }
   }
 
-  const cv = mapCvToDto(row)
-  const buffer = await renderToBuffer(<CvPdfDocument cv={cv} />)
-  const filename = buildCvPdfFilename(cv)
-
-  return new Response(Buffer.from(buffer), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `inline; filename="${filename}"`,
-      "Cache-Control": "private, no-store, max-age=0",
-      Pragma: "no-cache",
-    },
-  })
+  try {
+    const upstream = await fetch(row.cvUrl, {
+      redirect: "follow",
+      headers: {
+        Accept: "application/pdf,application/octet-stream,*/*",
+      },
+    })
+    if (!upstream.ok) {
+      return new Response(`Falha ao obter CV original (HTTP ${upstream.status})`, {
+        status: 502,
+      })
+    }
+    const arrayBuffer = await upstream.arrayBuffer()
+    const contentType = upstream.headers.get("content-type") ?? "application/pdf"
+    return new Response(Buffer.from(arrayBuffer), {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Disposition": `inline; filename="${filename}"`,
+        "Cache-Control": "private, no-store, max-age=0",
+        Pragma: "no-cache",
+      },
+    })
+  } catch {
+    return new Response("Não foi possível obter o CV original.", { status: 502 })
+  }
 }
