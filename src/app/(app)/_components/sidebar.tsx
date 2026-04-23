@@ -160,7 +160,7 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold text-sidebar-foreground">Banco CV</span>
-              <span className="text-[10px] text-muted-foreground">by Tática</span>
+              <span className="text-[10px] text-muted-foreground">by taticca</span>
             </div>
           </div>
         )}
