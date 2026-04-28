@@ -184,14 +184,14 @@ export default function ConfiguracoesPage() {
             <Building className="h-4 w-4" />
             Empresa
           </TabsTrigger> */}
-          <TabsTrigger value="notifications" className="gap-2">
+          {/* <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
             Notificações
-          </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-2">
+          </TabsTrigger> */}
+          {/* <TabsTrigger value="integrations" className="gap-2">
             <Link className="h-4 w-4" />
             Integrações
-          </TabsTrigger>
+          </TabsTrigger> */}
           <TabsTrigger value="admin" className="gap-2">
             <ShieldCheck className="h-4 w-4" />
             Admin
