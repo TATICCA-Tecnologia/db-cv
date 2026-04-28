@@ -8,7 +8,15 @@
       "Bash(pnpm db:seed)",
       "Bash(pnpm exec *)",
       "Bash(tsx -e ' *)",
-      "Bash(pnpm prisma *)"
+      "Bash(pnpm prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(cd e:\\\\\\\\Taticca\\\\\\\\sistemas\\\\\\\\smartrh)",
+      "Skill(impeccable)",
+      "Skill(impeccable:*)",
+      "Bash(node .claude/skills/impeccable/scripts/load-context.mjs)",
+      "Read(//c/Users/Nival/.claude/skills/impeccable/reference/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

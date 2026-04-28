@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useState } from "react"
@@ -13,7 +14,6 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Building2,
   Mail,
   Calendar,
   FolderKanban,
@@ -178,35 +178,38 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
       )}
     >
       {/* Header */}
-      <div className="relative flex items-center h-16 px-4 border-b border-sidebar-border">
+      <div className="relative flex items-center h-16 px-3 border-b border-sidebar-border">
         <div
           className={cn(
-            "flex items-center gap-2.5 overflow-hidden transition-all duration-200",
+            "overflow-hidden transition-all duration-200",
             collapsed ? "w-0 opacity-0" : "flex-1 opacity-100"
           )}
         >
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <Building2 className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-[13px] font-semibold text-sidebar-foreground tracking-tight">
-              Banco CV
-            </span>
-            <span className="text-[10px] text-muted-foreground">by taticca</span>
-          </div>
+          <Image
+            src="/logo.png"
+            alt="Taticca"
+            width={108}
+            height={36}
+            className="object-contain object-left"
+            priority
+          />
         </div>
 
         {collapsed && (
-          <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center mx-auto">
-            <Building2 className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <Image
+            src="/icon-dark-32x32.png"
+            alt="Taticca"
+            width={28}
+            height={28}
+            className="mx-auto"
+          />
         )}
 
         <Button
           variant="ghost"
           size="icon"
           className={cn(
-            "absolute right-2 h-7 w-7 text-muted-foreground hover:text-foreground transition-colors",
+            "absolute right-1.5 h-7 w-7 text-muted-foreground hover:text-foreground transition-colors shrink-0",
             collapsed && "right-1/2 translate-x-1/2"
           )}
           onClick={() => setCollapsed(!collapsed)}

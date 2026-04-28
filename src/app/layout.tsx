@@ -9,15 +9,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'Banco CV - Gestão de Currículos',
-  description: 'Plataforma interna de gestão e pesquisa de currículos da Tática',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      { url: '/icon-light-32x32.png', type: 'image/png', sizes: '32x32' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: '/apple-icon.png',
-  },
+  description: 'Plataforma interna de gestão e pesquisa de currículos da Taticca',
 }
 
 export default function RootLayout({

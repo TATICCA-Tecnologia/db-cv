@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState } from "react"
 import { Eye, EyeOff, LogIn } from "lucide-react"
 import { signIn } from "next-auth/react"
@@ -65,11 +66,16 @@ export function LoginForm() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md bg-card border-border">
-        <CardHeader className="text-center">
-          <div className="mx-auto h-14 w-14 rounded-xl bg-primary flex items-center justify-center mb-4">
-            <span className="text-primary-foreground font-bold text-xl">BC</span>
-          </div>
-          <CardTitle className="text-2xl font-bold text-foreground">
+        <CardHeader className="text-center items-center">
+          <Image
+            src="/logo.png"
+            alt="Taticca"
+            width={160}
+            height={54}
+            className="object-contain mb-2"
+            priority
+          />
+          <CardTitle className="text-xl font-bold text-foreground">
             Banco CV
           </CardTitle>
           <CardDescription className="text-muted-foreground">
