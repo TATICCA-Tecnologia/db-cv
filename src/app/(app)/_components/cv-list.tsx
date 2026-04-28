@@ -197,7 +197,7 @@ export function CVList() {
           <TableHeader>
             <TableRow className="bg-secondary/50 hover:bg-secondary/50">
               <TableHead className="text-foreground font-semibold">Candidato</TableHead>
-              <TableHead className="text-foreground font-semibold">Cargo</TableHead>
+              <TableHead className="text-foreground font-semibold">Ultimos cargo</TableHead>
               <TableHead className="text-foreground font-semibold hidden md:table-cell">Localização</TableHead>
               <TableHead className="text-foreground font-semibold hidden lg:table-cell">Experiência</TableHead>
               <TableHead className="text-foreground font-semibold hidden xl:table-cell">Origem</TableHead>
