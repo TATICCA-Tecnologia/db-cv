@@ -15,6 +15,7 @@ import {
   Save,
   ShieldCheck,
   RefreshCw,
+  UserPlus,
 } from "lucide-react"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -41,14 +42,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { ModalShell } from "@/components/ui/modal-shell"
+import { useModal } from "@/hooks/use-modal"
 import {
   type PipelineStage,
   type EmailTemplate,
@@ -87,7 +82,7 @@ const notificationsFormSchema = z.object({
 export default function ConfiguracoesPage() {
   const [pipeline, setPipeline] = useState<PipelineStage[]>(defaultPipeline)
   const [templates] = useState<EmailTemplate[]>(defaultTemplates)
-  const [openCreateUser, setOpenCreateUser] = useState(false)
+  const createUserModal = useModal()
 
   const utils = trpc.useUtils()
   const { data: users = [], isLoading: usersLoading } = trpc.auth.users.list.useQuery()
@@ -95,7 +90,7 @@ export default function ConfiguracoesPage() {
     onSuccess: () => {
       toast.success("Utilizador criado com sucesso")
       void utils.auth.users.list.invalidate()
-      setOpenCreateUser(false)
+      createUserModal.close()
       createUserForm.reset()
     },
     onError: (e) => toast.error(e.message),
@@ -286,7 +281,7 @@ export default function ConfiguracoesPage() {
                     Gerencie os utilizadores com acesso ao sistema
                   </CardDescription>
                 </div>
-                <Button onClick={() => setOpenCreateUser(true)}>
+                <Button onClick={createUserModal.open}>
                   <Plus className="h-4 w-4 mr-2" />
                   Novo Utilizador
                 </Button>
@@ -355,92 +350,97 @@ export default function ConfiguracoesPage() {
             </CardContent>
           </Card>
 
-          <Dialog open={openCreateUser} onOpenChange={setOpenCreateUser}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Criar Utilizador</DialogTitle>
-                <DialogDescription>
-                  O utilizador receberá acesso ao sistema e será obrigado a alterar a palavra-passe no primeiro login.
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...createUserForm}>
-                <form
-                  onSubmit={createUserForm.handleSubmit((values) => createUser.mutate(values))}
-                  className="space-y-4"
+          <ModalShell
+            open={createUserModal.isOpen}
+            onOpenChange={createUserModal.setIsOpen}
+            icon={UserPlus}
+            title="Criar Utilizador"
+            description="O utilizador receberá acesso ao sistema e será obrigado a alterar a palavra-passe no primeiro login."
+            footer={
+              <>
+                <Button type="button" variant="outline" onClick={createUserModal.close}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  form="create-user-form"
+                  disabled={createUser.isPending}
                 >
-                  <FormField
-                    control={createUserForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome</FormLabel>
+                  {createUser.isPending ? "A criar..." : "Criar"}
+                </Button>
+              </>
+            }
+          >
+            <Form {...createUserForm}>
+              <form
+                id="create-user-form"
+                onSubmit={createUserForm.handleSubmit((values) => createUser.mutate(values))}
+                className="space-y-4"
+              >
+                <FormField
+                  control={createUserForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nome completo" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createUserForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="email@exemplo.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createUserForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Palavra-passe</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Mínimo 8 caracteres" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={createUserForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Perfil</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
                         <FormControl>
-                          <Input placeholder="Nome completo" {...field} />
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={createUserForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder="email@exemplo.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={createUserForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Palavra-passe</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="Mínimo 8 caracteres" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={createUserForm.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Perfil</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="recruiter">Recrutador</SelectItem>
-                            <SelectItem value="viewer">Visualizador</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <Button type="button" variant="outline" onClick={() => setOpenCreateUser(false)}>
-                      Cancelar
-                    </Button>
-                    <Button type="submit" disabled={createUser.isPending}>
-                      {createUser.isPending ? "A criar..." : "Criar"}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                        <SelectContent>
+                          <SelectItem value="admin">Administrador</SelectItem>
+                          <SelectItem value="recruiter">Recrutador</SelectItem>
+                          <SelectItem value="viewer">Visualizador</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </form>
+            </Form>
+          </ModalShell>
         </TabsContent>
 
         <TabsContent value="templates" className="mt-6">

@@ -1,7 +1,17 @@
 "use client"
 
 import Link from "next/link"
-import { Mail, Phone, MapPin, Briefcase, Clock, Calendar, FileDown, FileText } from "lucide-react"
+import {
+  Mail,
+  Phone,
+  MapPin,
+  Briefcase,
+  Clock,
+  Calendar,
+  FileDown,
+  FileText,
+  RefreshCw,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -75,6 +85,8 @@ interface CVModalProps {
   onClose: () => void
   onMarkAsInAnalysis: (cvId: string) => void
   isUpdatingStatus?: boolean
+  onReextract?: (cvId: string) => void
+  isReextracting?: boolean
 }
 
 export function CVModal({
@@ -82,6 +94,8 @@ export function CVModal({
   onClose,
   onMarkAsInAnalysis,
   isUpdatingStatus = false,
+  onReextract,
+  isReextracting = false,
 }: CVModalProps) {
   if (!cv) return null
 
@@ -469,7 +483,7 @@ export function CVModal({
             </>
           ) : null}
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-4">
             <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90" asChild>
               <a href={`/api/cv/${cv.id}/pdf`} download>
                 <FileDown className="h-4 w-4 mr-2" />
@@ -490,6 +504,19 @@ export function CVModal({
             >
               Marcar como Em Análise
             </Button>
+            {onReextract ? (
+              <Button
+                variant="outline"
+                className="flex-1 border-border"
+                disabled={isReextracting}
+                onClick={() => onReextract(cv.id)}
+              >
+                <RefreshCw
+                  className={`h-4 w-4 mr-2 ${isReextracting ? "animate-spin" : ""}`}
+                />
+                {isReextracting ? "A reprocessar..." : "Reprocessar com IA"}
+              </Button>
+            ) : null}
           </div>
         </div>
       </DialogContent>

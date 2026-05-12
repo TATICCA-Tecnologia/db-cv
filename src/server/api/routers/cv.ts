@@ -2,6 +2,9 @@ import { TRPCError } from "@trpc/server"
 import { z } from "zod"
 import { mapCvToDto } from "@/server/lib/prisma-mappers"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
+import { extractCvFromPdf } from "@/server/ai/extract-cv"
+import { mapGeminiExtractionToCvFields } from "@/server/jobs/google-sheet-cv-sync/map-gemini-extraction-to-cv"
+import { upsertCvExtractionFromGemini } from "@/server/jobs/google-sheet-cv-sync/persist-cv-extraction"
 
 const cvStatusZod = z.enum(["novo", "em_analise", "aprovado", "rejeitado"])
 
@@ -119,6 +122,64 @@ export const cvRouter = createTRPCRouter({
         include: { extraction: true },
       })
       return mapCvToDto(row)
+    }),
+
+  reextract: publicProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const cv = await ctx.db.cv.findUnique({ where: { id: input.id } })
+      if (!cv) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "CV não encontrado" })
+      }
+
+      let pdfBuffer: Buffer
+      try {
+        const res = await fetch(cv.cvUrl)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        pdfBuffer = Buffer.from(await res.arrayBuffer())
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Não foi possível baixar o PDF do CV.",
+          cause: e,
+        })
+      }
+
+      let extraction
+      try {
+        const { result } = await extractCvFromPdf(pdfBuffer)
+        extraction = result
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Falha na extração por IA. Tente novamente.",
+          cause: e,
+        })
+      }
+
+      const fields = mapGeminiExtractionToCvFields(extraction)
+
+      const row = await ctx.db.cv.update({
+        where: { id: input.id },
+        data: {
+          aiSeen: true,
+          ...(fields.name ? { name: fields.name } : {}),
+          ...(fields.phone ? { phone: fields.phone } : {}),
+          ...(fields.jobTitle ? { jobTitle: fields.jobTitle } : {}),
+          ...(fields.experience ? { experience: fields.experience } : {}),
+          ...(fields.location ? { location: fields.location } : {}),
+          ...(fields.skills ? { skills: fields.skills } : {}),
+          ...(fields.summary ? { summary: fields.summary } : {}),
+        },
+        include: { extraction: true },
+      })
+      await upsertCvExtractionFromGemini(input.id, extraction)
+
+      const refreshed = await ctx.db.cv.findUnique({
+        where: { id: input.id },
+        include: { extraction: true },
+      })
+      return mapCvToDto(refreshed ?? row)
     }),
 
   delete: publicProcedure

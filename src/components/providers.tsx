@@ -4,6 +4,7 @@ import { useState } from "react"
 import { SessionProvider } from "next-auth/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { httpBatchLink } from "@trpc/client"
+import { NuqsAdapter } from "nuqs/adapters/next/app"
 import superjson from "superjson"
 import { trpc } from "@/trpc/react"
 import { AuthProvider } from "@/contexts/auth-context"
@@ -38,7 +39,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>{children}</AuthProvider>
+          <NuqsAdapter>
+            <AuthProvider>{children}</AuthProvider>
+          </NuqsAdapter>
         </QueryClientProvider>
       </trpc.Provider>
     </SessionProvider>

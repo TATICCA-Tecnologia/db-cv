@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select"
 import type { Candidate } from "@/app/(app)/utils/candidates"
 import { trpc } from "@/trpc/react"
+import { toast } from "sonner"
 
 interface CandidateDetailModalProps {
   candidate: Candidate
@@ -78,20 +79,41 @@ export function CandidateDetailModal({ candidate, onClose, onStatusChange, onRee
     },
   })
 
+  const updateRatingMutation = trpc.candidate.update.useMutation({
+    onSuccess: (updated) => {
+      void utils.candidate.list.invalidate()
+      onReextracted?.(updated)
+    },
+    onError: (err) => {
+      setRating(candidate.rating)
+      toast.error(err.message)
+    },
+  })
+
+  const handleRatingClick = (star: number) => {
+    if (star === rating || updateRatingMutation.isPending) return
+    setRating(star)
+    updateRatingMutation.mutate({
+      id: candidate.id,
+      data: { rating: star },
+    })
+  }
+
   const renderStars = (currentRating: number, interactive = false) => {
     return (
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map(star => (
           <button
             key={star}
-            onClick={() => interactive && setRating(star)}
-            disabled={!interactive}
-            className={interactive ? "cursor-pointer" : "cursor-default"}
+            type="button"
+            onClick={() => interactive && handleRatingClick(star)}
+            disabled={!interactive || updateRatingMutation.isPending}
+            className={interactive ? "cursor-pointer disabled:cursor-not-allowed" : "cursor-default"}
           >
             <Star
               className={`h-5 w-5 transition-colors ${
-                star <= currentRating 
-                  ? "fill-yellow-400 text-yellow-400" 
+                star <= currentRating
+                  ? "fill-yellow-400 text-yellow-400"
                   : "text-muted-foreground/30 hover:text-yellow-400/50"
               }`}
             />

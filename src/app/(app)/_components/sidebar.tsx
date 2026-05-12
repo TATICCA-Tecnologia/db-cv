@@ -197,11 +197,12 @@ export function Sidebar({ user, onLogout }: SidebarProps) {
 
         {collapsed && (
           <Image
-            src="/icon-dark-32x32.png"
+            src="/favicon.ico"
             alt="Taticca"
             width={28}
             height={28}
             className="mx-auto"
+            unoptimized
           />
         )}
 
