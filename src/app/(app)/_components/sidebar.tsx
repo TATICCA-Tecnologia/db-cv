@@ -17,6 +17,8 @@ import {
   Mail,
   Calendar,
   FolderKanban,
+  MessageSquare,
+  Upload,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -61,6 +63,8 @@ const navSections: NavSection[] = [
     title: "RECRUTAMENTO",
     items: [
       { id: "candidatos", label: "Candidatos", icon: Users, href: "/candidatos" },
+      { id: "upload", label: "Upload de CVs", icon: Upload, href: "/upload" },
+      { id: "chat", label: "Chat com IA", icon: MessageSquare, href: "/chat" },
       { id: "vagas", label: "Vagas", icon: Briefcase, comingSoon: true },
       { id: "pipeline", label: "Pipeline", icon: FolderKanban, comingSoon: true },
     ],

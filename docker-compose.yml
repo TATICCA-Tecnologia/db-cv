@@ -35,12 +35,17 @@ services:
       - sh
       - -c
       - |
-        set -eu
+        set -u
         while true; do
           ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           echo "[$$ts] Triggering CV sync..."
-          curl -fsS -X POST "$$SYNC_CRON_URL" -H "Authorization: Bearer $$CRON_SECRET"
-          echo "[$$ts] Done. Sleeping $$SYNC_CRON_INTERVAL_SECONDS seconds."
+          if curl -fsS --max-time 310 -X POST "$$SYNC_CRON_URL" \
+              -H "Authorization: Bearer $$CRON_SECRET"; then
+            echo "[$$ts] Sync concluido com sucesso."
+          else
+            echo "[$$ts] Sync falhou (curl exit $$?). Aguardando proximo intervalo."
+          fi
+          echo "[$$ts] Sleeping $$SYNC_CRON_INTERVAL_SECONDS seconds."
           sleep "$$SYNC_CRON_INTERVAL_SECONDS"
         done
     restart: unless-stopped

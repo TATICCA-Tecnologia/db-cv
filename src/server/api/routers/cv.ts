@@ -1,10 +1,12 @@
 import { TRPCError } from "@trpc/server"
 import { z } from "zod"
+import { GoogleGenerativeAI } from "@google/generative-ai"
 import { mapCvToDto } from "@/server/lib/prisma-mappers"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { extractCvFromPdf } from "@/server/ai/extract-cv"
 import { mapGeminiExtractionToCvFields } from "@/server/jobs/google-sheet-cv-sync/map-gemini-extraction-to-cv"
 import { upsertCvExtractionFromGemini } from "@/server/jobs/google-sheet-cv-sync/persist-cv-extraction"
+import { getDocumentObjectBuffer } from "@/server/storage/minio"
 
 const cvStatusZod = z.enum(["novo", "em_analise", "aprovado", "rejeitado"])
 
@@ -134,9 +136,13 @@ export const cvRouter = createTRPCRouter({
 
       let pdfBuffer: Buffer
       try {
-        const res = await fetch(cv.cvUrl)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        pdfBuffer = Buffer.from(await res.arrayBuffer())
+        if (cv.storageKey) {
+          pdfBuffer = await getDocumentObjectBuffer(cv.storageKey)
+        } else {
+          const res = await fetch(cv.cvUrl)
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          pdfBuffer = Buffer.from(await res.arrayBuffer())
+        }
       } catch (e) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
@@ -191,5 +197,127 @@ export const cvRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "CV não encontrado" })
       }
       return { ok: true as const }
+    }),
+
+  chat: publicProcedure
+    .input(
+      z.object({
+        message: z.string().min(1).max(2000),
+        messages: z.array(
+          z.object({
+            role: z.enum(["user", "assistant"]),
+            content: z.string(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const apiKey = process.env.GEMINI_API_KEY
+      if (!apiKey?.trim()) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Chave da API Gemini não configurada.",
+        })
+      }
+
+      const rows = await ctx.db.cv.findMany({
+        orderBy: { submittedAt: "desc" },
+        include: { extraction: true },
+        take: 300,
+      })
+
+      const cvDtos = rows.map(mapCvToDto)
+
+      const candidateLines = cvDtos.map((cv) => {
+        const skills = cv.skills.join(", ")
+        const idiomas =
+          cv.extracao?.idiomas
+            .map((i) => `${i.idioma ?? ""}${i.nivel ? ` (${i.nivel})` : ""}`)
+            .filter(Boolean)
+            .join(", ") ?? ""
+        const senioridade = cv.extracao?.analiseIa?.senioridade ?? ""
+        const anos = cv.extracao?.analiseIa?.anosExperiencia
+
+        return [
+          `ID:${cv.id}`,
+          `Nome:${cv.nome}`,
+          `Cargo:${cv.cargo}`,
+          `Local:${cv.localizacao}`,
+          senioridade ? `Senioridade:${senioridade}` : null,
+          anos ? `AnosExp:${anos}` : null,
+          skills ? `Skills:${skills}` : null,
+          idiomas ? `Idiomas:${idiomas}` : null,
+          cv.resumo ? `Resumo:${cv.resumo.slice(0, 200)}` : null,
+        ]
+          .filter(Boolean)
+          .join(" | ")
+      })
+
+      const historyText = input.messages
+        .map((m) => `${m.role === "user" ? "Usuário" : "Assistente"}: ${m.content}`)
+        .join("\n")
+
+      const prompt = `Você é um assistente de recrutamento especializado em busca de candidatos.
+Responda sempre em português, seja direto e útil.
+Retorne SOMENTE um JSON válido (sem blocos de código markdown) com este formato exato:
+{"message":"sua resposta em texto","candidateIds":["id1","id2"]}
+
+Regras:
+- candidateIds deve conter apenas IDs que existam na lista abaixo
+- Se não encontrar candidatos compatíveis, use candidateIds como []
+- Explique brevemente por que cada candidato foi selecionado
+
+=== BANCO DE CANDIDATOS (${cvDtos.length} candidatos) ===
+${candidateLines.join("\n")}
+=== FIM DO BANCO ===
+${historyText ? `\n=== HISTÓRICO DA CONVERSA ===\n${historyText}\n=== FIM DO HISTÓRICO ===\n` : ""}
+Usuário: ${input.message}`
+
+      const genAI = new GoogleGenerativeAI(apiKey)
+      const model = genAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
+        generationConfig: { responseMimeType: "application/json" },
+      })
+
+      let text: string
+      try {
+        const result = await model.generateContent(prompt)
+        text = result.response.text()
+      } catch (e) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Falha ao consultar a IA. Tente novamente.",
+          cause: e,
+        })
+      }
+
+      let parsed: { message: string; candidateIds: string[] }
+      try {
+        const clean = text
+          .trim()
+          .replace(/^```(?:json)?\s*\n?/, "")
+          .replace(/\n?```$/, "")
+          .trim()
+        const raw = JSON.parse(clean) as { message?: string; candidateIds?: string[] }
+        parsed = {
+          message: raw.message ?? text,
+          candidateIds: Array.isArray(raw.candidateIds) ? raw.candidateIds : [],
+        }
+      } catch {
+        parsed = { message: text, candidateIds: [] }
+      }
+
+      const matchedCvs =
+        parsed.candidateIds.length > 0
+          ? await ctx.db.cv.findMany({
+              where: { id: { in: parsed.candidateIds } },
+              include: { extraction: true },
+            })
+          : []
+
+      return {
+        message: parsed.message,
+        candidates: matchedCvs.map(mapCvToDto),
+      }
     }),
 })
